@@ -23,7 +23,7 @@ This project investigates the metabolic roles of uncultivated bacterioplankton l
 ## Methods Summary
 
 
-> Full project plan: [View on GitHub Wiki](https://github.com/Qaswara98/dead-zone-metagenomes-Metabolic/wiki/Project-Plan)
+> Full project plan: [View on GitHub Wiki](https://github.com/Qaswara98/dead-zone-metagenomes-Metabolic-/wiki/Project-Plan)
 
 ---
 To be continued...... 
