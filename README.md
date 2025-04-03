@@ -1,4 +1,4 @@
-# Dead Zone Metagenomes
+# The “Microbial Dark Matter”
 
 **Metabolic Roles of Uncultivated Bacterioplankton Lineages in the Northern Gulf of Mexico “Dead Zone”**  
 _A project based on the dataset and findings from Thrash et al. (2017)_
