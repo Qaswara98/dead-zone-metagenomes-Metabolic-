@@ -23,7 +23,7 @@ module load pplacer/1.1.alpha19
 # Paths
 PROJECT_DIR=/home/abha6491/dead-zone-metagenomes-Metabolic-
 CHECKM_DIR=$PROJECT_DIR/results/checkm
-MARKER_FILE=$CHECKM_DIR/lineage.ms       # must exist from your lineage_wf run
+MARKER_FILE=$CHECKM_DIR/lineage.ms       # must lineage_wf run
 ANALYZE_DIR=$CHECKM_DIR                  # contains both bins/ and storage/
 QA_DIR=$CHECKM_DIR/qa_summary
 
