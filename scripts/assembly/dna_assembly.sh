@@ -1,77 +1,72 @@
-#!/bin/bash 
-#SBATCH -A uppmax2025-3-3
-#SBATCH -M snowy
-#SBATCH -p core
-#SBATCH -n 16  # 16 threads as per your previous script
-#SBATCH -t 07:00:00
-#SBATCH --mem=32GB  # Requested memory, adjust as needed
-#SBATCH -J dna_assembly
-#SBATCH -o ~/dead-zone-metagenomes-Metabolic-/results/assembly_dna.%j.out
+#!/bin/bash -l
+#-------------------- Slurm directives --------------------#
+#SBATCH -A uppmax2025-3-3             # project account
+#SBATCH -M snowy                      # cluster
+#SBATCH -p core                       # standard core partition
+#SBATCH -n 16                         # number of CPU cores
+#SBATCH -t 07:00:00                   # wall‑clock time
+#SBATCH --mem=32G                     # total memory
+#SBATCH -J dna_assembly               # job name
+#SBATCH -D /home/abha6491/dead-zone-metagenomes-Metabolic-   # start dir
+#SBATCH -o /home/abha6491/dead-zone-metagenomes-Metabolic-/results/assembly_dna/assembly_dna.%j.out
+#SBATCH -e /home/abha6491/dead-zone-metagenomes-Metabolic-/results/assembly_dna/assembly_dna.%j.err
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=abha6491@student.uu.se
+#----------------------------------------------------------#
 
-# Load modules
+set -euo pipefail                          # safer bash: stop on error
+
+#-------------------- Load software -----------------------#
 module load bioinfo-tools
 module load megahit/1.2.9
 
-# Directories
-RAW_READS_DIR=~/dead-zone-metagenomes-Metabolic-/data/raw_reads
-ASSEMBLY_DIR=~/dead-zone-metagenomes-Metabolic-/results/assembly_dna
-OUTPUT_DIR="$ASSEMBLY_DIR/simultaneous_assembly"
-mkdir -p $ASSEMBLY_DIR
+#-------------------- Project paths -----------------------#
+PROJECT_DIR=$HOME/dead-zone-metagenomes-Metabolic-
+RAW_READS_DIR=$PROJECT_DIR/data/raw_reads
+ASSEMBLY_DIR=$PROJECT_DIR/results/assembly_dna
+OUTPUT_DIR=$ASSEMBLY_DIR/simultaneous_assembly
+TMP_DIR=$OUTPUT_DIR/tmp
 
-# Check raw reads
-echo "Checking raw reads..."
-for SAMPLE in "SRR4342129" "SRR4342133"; do
-    for STRAND in 1 2; do
-        FILE="$RAW_READS_DIR/${SAMPLE}_${STRAND}.paired.trimmed.fastq.gz"
-        if [[ ! -f "$FILE" ]]; then
-            echo "ERROR: Missing $FILE"
-            exit 1
-        fi
-    done
+mkdir -p "$ASSEMBLY_DIR"
+
+#-------------------- Samples to co‑assemble --------------#
+SAMPLES=(SRR4342129 SRR4342133)           # add more IDs if needed
+
+#-------------------- Input‑file sanity check -------------#
+echo "Checking raw reads…"
+for SAMPLE in "${SAMPLES[@]}"; do
+  for STRAND in 1 2; do
+    FILE="$RAW_READS_DIR/${SAMPLE}_${STRAND}.paired.trimmed.fastq.gz"
+    [[ -f $FILE ]] || { echo "ERROR: missing $FILE"; exit 1; }
+  done
 done
+echo "All input files present."
 
-# Prepare comma-separated lists for forward and reverse reads
+#-------------------- Build comma‑separated read lists ----#
 FWD_READS=""
 REV_READS=""
-for SAMPLE in "SRR4342129" "SRR4342133"; do
-    FWD_READS="${FWD_READS},$RAW_READS_DIR/${SAMPLE}_1.paired.trimmed.fastq.gz"
-    REV_READS="${REV_READS},$RAW_READS_DIR/${SAMPLE}_2.paired.trimmed.fastq.gz"
+for SAMPLE in "${SAMPLES[@]}"; do
+  FWD_READS+="$RAW_READS_DIR/${SAMPLE}_1.paired.trimmed.fastq.gz,"
+  REV_READS+="$RAW_READS_DIR/${SAMPLE}_2.paired.trimmed.fastq.gz,"
 done
-FWD_READS="${FWD_READS#,}"  # Remove leading comma
-REV_READS="${REV_READS#,}"
+# remove the trailing comma
+FWD_READS=${FWD_READS%,}
+REV_READS=${REV_READS%,}
 
-echo "Forward reads: $FWD_READS"
-echo "Reverse reads: $REV_READS"
+#-------------------- Clean previous run ------------------#
+[[ -d $OUTPUT_DIR ]] && { echo "Removing old output…"; rm -rf "$OUTPUT_DIR"; }
+[[ -d $TMP_DIR    ]] && { echo "Removing old tmp dir…"; rm -rf "$TMP_DIR"; }
 
-# Cleanup previous output directory if it exists
-if [ -d "$OUTPUT_DIR" ]; then
-    echo "Removing previous output directory..."
-    rm -rf "$OUTPUT_DIR"
-fi
+#-------------------- Run Megahit -------------------------#
+echo "Starting assembly…"
+megahit \
+  -1 "$FWD_READS" \
+  -2 "$REV_READS" \
+  -o "$OUTPUT_DIR" \
+  --min-count 3 \                       # trims noise, saves RAM
+  --k-min 21 --k-max 87 --k-step 12 \   # fewer, smaller k‑mer sizes
+  --mem-flag 3 --kmin-1pass \           # most aggressive mem mode
+  --num-cpu-threads 8                   # match SBATCH -n 8
 
-# Cleanup temporary files
-TEMP_DIR="$ASSEMBLY_DIR/simultaneous_assembly/tmp"
-if [ -d "$TEMP_DIR" ]; then
-    echo "Removing temporary files..."
-    rm -rf "$TEMP_DIR"
-fi
-
-# Run Megahit with reduced k-max for memory optimization
-echo "Starting assembly with Megahit..."
-megahit -1 "$FWD_READS" \
-        -2 "$REV_READS" \
-        -o "$OUTPUT_DIR" \
-        --min-count 2 \
-        --k-min 21 --k-max 99 --k-step 6 \  # Reduced k-max to minimize memory usage
-        --mem-flag 2 --kmin-1pass  # Memory optimization flag
-
-# Check success
-if [ $? -eq 0 ]; then
-    echo "Assembly completed successfully!"
-else
-    echo "ERROR: Assembly failed."
-    exit 1
-fi
+echo "Assembly finished OK."
 
