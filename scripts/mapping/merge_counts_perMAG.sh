@@ -24,7 +24,7 @@ for f in "$COUNTS_DIR"/bin.*_counts.txt; do
     tail -n +3 "$f" >> "$OUT_TABLE"
 done
 
-echo "✅  Combined table written to: $OUT_TABLE"
+echo " Combined table written to: $OUT_TABLE"
 echo "    Preview:"
 head -n 6 "$OUT_TABLE" | column -t
 
